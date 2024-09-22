@@ -1,0 +1,52 @@
+name: ex-1
+
+services:
+
+  pg14:
+    image: ghcr.io/pellepelster/solidblocks-rds-postgresql:14-v0.2.8
+    container_name: pg14
+    restart: always
+    networks:
+      - ex-1
+    expose:
+      - "5432"
+    environment:
+      DB_INSTANCE_NAME: instance1
+      DB_ADMIN_PASSWORD: rdspassword1
+
+      #DB_BACKUP_LOCAL: 1
+      DB_BACKUP_LOCAL_RETENTION_FULL_TYPE: count
+      DB_BACKUP_LOCAL_RETENTION_FULL: 7
+      DB_BACKUP_LOCAL_RETENTION_DIFF: 4
+
+      DB_DATABASE_db1: database1
+      DB_USERNAME_db1: user1
+      DB_PASSWORD_db1: password1
+
+      DB_POSTGRES_EXTRA_CONFIG: |
+        max_connections = 20
+        wal_buffers = 16MB
+        work_mem = 5242kB
+    volumes:
+      #- ./postgres_backup:/storage/backup
+      - ./postgres_data:/storage/data
+    depends_on:
+      pg14-own:
+        condition: service_completed_successfully
+
+  pg14-own:
+    image: ubuntu:22.04
+    container_name: pg14-own
+    user: "root"
+    networks:
+      - ex-1
+    volumes:
+      - ./postgres_backup:/storage/backup
+      - ./postgres_data:/storage/data
+    command: >
+      echo "Changing ownership to 10000:10000"
+      && chown -R 10000:10000 /storage
+
+networks:
+  ex-1:
+    name: ex-1
