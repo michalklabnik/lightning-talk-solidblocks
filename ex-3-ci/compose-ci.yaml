@@ -1,0 +1,39 @@
+name: ex-3
+
+services:
+
+  pg14:
+    image: ghcr.io/pellepelster/solidblocks-rds-postgresql:14-v0.2.8
+    container_name: pg14
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - ex-3
+    expose:
+      - "5432"
+    env_file:
+      - .s3.env
+    environment:
+      DB_INSTANCE_NAME: instance3
+      DB_ADMIN_PASSWORD: rdspassword3
+
+      DB_BACKUP_S3: 1
+      DB_BACKUP_S3_BUCKET: talk-solidblocks
+      # From .s3.env file
+      #DB_BACKUP_S3_ACCESS_KEY:
+      #DB_BACKUP_S3_SECRET_KEY:
+      DB_BACKUP_S3_HOST: s3.eu-west-3.amazonaws.com
+      DB_BACKUP_S3_REGION: eu-west-3
+
+      DB_DATABASE_db3: database3
+      DB_USERNAME_db3: user3
+      DB_PASSWORD_db3: password3
+    volumes:
+      - ./postgres_backup:/storage/backup
+      - ./postgres_data:/storage/data
+    command: [ "restore-only" ]
+
+networks:
+  ex-3:
+    name: ex-3

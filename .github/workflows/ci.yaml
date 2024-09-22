@@ -1,0 +1,62 @@
+name: Ex. 3 CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ex-3-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PostgreSQL data directories
+        run: |
+          mkdir -p ./ex-3-ci/postgres_backup ./ex-3-ci/postgres_data
+          sudo chown -R 10000:10000 ./ex-3-ci/postgres_backup ./ex-3-ci/postgres_data
+          ls -la ./ex-3-ci/
+
+      - name: S3 secrets to env file
+        run: |
+          echo "DB_BACKUP_S3_ACCESS_KEY=${{ secrets.DB_BACKUP_S3_ACCESS_KEY }}" > ./ex-3-ci/.s3.env
+          echo "DB_BACKUP_S3_SECRET_KEY=${{ secrets.DB_BACKUP_S3_SECRET_KEY }}" >> ./ex-3-ci/.s3.env
+          cat ./ex-3-ci/.s3.env
+
+      - name: Run Docker compose
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: "./ex-3-ci/compose-ci.yaml"
+          down-flags: "--volumes"
+
+      - name: Docker compose list
+        run: |
+          docker compose -f ./ex-3-ci/compose-ci.yaml ls
+          docker compose -f ./ex-3-ci/compose-ci.yaml logs
+
+      - name: Install psql
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install --no-install-recommends --yes -q postgresql-client
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..15}; do
+            if pg_isready -h localhost -U rds; then
+              echo "[${i}] PostgreSQL is ready!"
+              exit 0
+            fi
+            echo "[${i}] Waiting for PostgreSQL to be ready..."
+            docker compose -f ./ex-3-ci/compose-ci.yaml logs
+            sleep 15
+          done
+          echo "PostgreSQL is not ready after ${i} attempts"
+          exit 1
+
+      - name: Run SQL query with psql
+        run: |
+          PGPASSWORD=password3 psql -h 127.0.0.1 -U user3 database3 -c "SELECT * FROM app3;"
+
+      - name: Run SQL query with Docker compose
+        run: |
+          docker compose -f ./ex-3-ci/compose-ci.yaml exec -T -e PGPASSWORD=password3 pg14 psql -h 127.0.0.1 -U user3 database3 -c "SELECT * FROM app3;"
