@@ -1,3 +1,9 @@
+# Repository files
+.local/
+ex-*/postgres_backup
+ex-*/postgres_data
+.*.env
+
 ### VisualStudioCode template
 .vscode/*
 !.vscode/settings.json
